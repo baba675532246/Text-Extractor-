@@ -1,0 +1,882 @@
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <title>Text Extractor</title>
+  <script>
+    // If the app is opened as a local file, redirect to the HTTPS version.
+    if (window.location.protocol === "file:") {
+      // Replace the URL below with the URL where your app is hosted.
+      window.location.href = "https://yourdomain.com/TextExtractor.html";
+    }
+  </script>
+  <!-- Load multiple Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&amp;family=Montserrat:wght@400;700&amp;family=Roboto:wght@400;700&amp;family=Source+Code+Pro:wght@400;700&amp;display=swap" rel="stylesheet">
+  <style>
+    /* Global font settings */
+    body {
+      font-family: 'Roboto', sans-serif;
+      padding: 20px;
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      text-align: center;
+      margin: 0;
+      transition: background 0.5s ease;
+    }
+    /* Header: Use Montserrat with gradient styling */
+    h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 3em;
+      background: linear-gradient(90deg, #ff8a00, #e52e71);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 20px;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    h1:hover {
+      transform: scale(1.05);
+    }
+    /* Container with drag-drop, file select & share button */
+    #container {
+      background: #fff;
+      border-radius: 12px;
+      padding: 30px 20px;
+      display: inline-block;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+      transition: transform 0.3s ease;
+    }
+    #container:hover {
+      transform: translateY(-5px);
+    }
+    /* Engaging Drag & Drop Area with Icon */
+    #dropArea {
+      border: 2px dashed #ff8a00;
+      border-radius: 8px;
+      padding: 40px;
+      margin: 20px auto;
+      max-width: 400px;
+      cursor: pointer;
+      background: rgba(255,138,0,0.1);
+      color: #e52e71;
+      font-size: 1.2em;
+      font-weight: bold;
+      transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #dropArea.hover {
+      background-color: rgba(229,46,113,0.15);
+      transform: scale(1.02);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .uploadIcon {
+      font-size: 3em;
+      margin-bottom: 10px;
+    }
+    /* Selected Files List */
+    #selectedFiles {
+      margin-top: 10px;
+      font-size: 1em;
+      color: #555;
+      text-align: left;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      padding: 5px;
+      background: #fafafa;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    /* Hide file input */
+    #fileInput {
+      display: none;
+    }
+    /* Common button styling */
+    button {
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      background: #007BFF;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s ease, transform 0.3s;
+    }
+    button:hover {
+      background: #0056b3;
+      transform: scale(1.03);
+    }
+    /* Share Button styling */
+    #shareBtn {
+      background: #8e44ad;
+    }
+    #shareBtn:hover {
+      background: #732d91;
+    }
+    /* Single File Result: Use Source Code Pro */
+    #result {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      text-align: left;
+      background: #fff;
+      padding: 15px;
+      padding-right: 100px; /* Reserve space for copy button */
+      border-radius: 8px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      border: 1px solid #ced4da;
+      position: relative;
+      min-height: 80px;
+      transition: box-shadow 0.3s ease;
+      font-family: 'Source Code Pro', monospace;
+    }
+    #result:hover {
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    .copyBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #28a745;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: background 0.3s ease;
+    }
+    .copyBtn:hover {
+      background: #218838;
+    }
+    /* Correction Modal for Single File Mode */
+    #correctionScreen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.5s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    #correctionContent {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      max-height: 80%;
+      overflow-y: auto;
+      width: 90%;
+      max-width: 600px;
+      text-align: left;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+      font-family: 'Source Code Pro', monospace;
+    }
+    .lineItem {
+      margin-bottom: 15px;
+      border-bottom: 1px solid #dee2e6;
+      padding-bottom: 5px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .lineItem:hover {
+      background: #f9f9f9;
+    }
+    .lineNumber {
+      font-weight: bold;
+      margin-right: 10px;
+    }
+    .abnormal {
+      color: #dc3545;
+      font-weight: bold;
+    }
+    .lineInput {
+      width: 100%;
+      font-family: 'Source Code Pro', monospace;
+      font-size: inherit;
+      padding: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+    }
+    /* Batch Results Container */
+    #batchResults {
+      margin-top: 20px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+      animation: fadeIn 0.5s ease;
+    }
+    .batchItem {
+      background: #fff;
+      border: 1px solid #ced4da;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      text-align: left;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .batchItem:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    .batchHeader {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 1.1em;
+      padding-right: 100px; /* Reserve space for copy button */
+      font-family: 'Lora', serif;
+    }
+    /* Progress container as flex row: progress bar and earth indicator on right */
+    .progressContainer {
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+    }
+    progress {
+      flex: 1;
+      height: 20px;
+      appearance: none;
+      margin-right: 10px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    progress::-webkit-progress-bar {
+      background-color: #eee;
+    }
+    progress::-webkit-progress-value {
+      background: linear-gradient(90deg, #ff8a00, #e52e71);
+    }
+    /* Earth indicator for batch progress */
+    .batchEarthIndicator {
+      font-size: 20px;
+      animation: spinEarth 2s linear infinite;
+    }
+    /* Batch preview */
+    .batchPreview {
+      background: #f1f3f5;
+      padding: 10px;
+      border-radius: 4px;
+      font-size: 0.95em;
+      margin-top: 10px;
+      max-height: 100px;
+      overflow: hidden;
+      font-family: 'Lora', serif;
+    }
+    .batchCopyBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #2ecc71;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: background 0.3s ease;
+    }
+    .batchCopyBtn:hover {
+      background: #27ae60;
+    }
+    /* Full Correction Modal for Batch Items (Interactive Edit Mode) */
+    #fullCorrectionScreen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      animation: fadeIn 0.5s ease;
+    }
+    #fullCorrectionContent {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      max-height: 80%;
+      overflow-y: auto;
+      width: 90%;
+      max-width: 600px;
+      text-align: left;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+      font-family: 'Source Code Pro', monospace;
+    }
+    /* Read-only Full Result View in Full Correction Modal */
+    #fullResultView {
+      white-space: pre-wrap;
+      background: #f1f3f5;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      font-family: 'Source Code Pro', monospace;
+    }
+    /* Full Result Screen Buttons */
+    #resultCopyBtn, #resultBackBtn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s ease;
+      margin-left: 5px;
+      font-family: 'Roboto', sans-serif;
+    }
+    #resultCopyBtn {
+      background: #2ecc71;
+      color: white;
+    }
+    #resultCopyBtn:hover {
+      background: #27ae60;
+    }
+    #resultBackBtn {
+      background: #007BFF;
+      color: white;
+    }
+    #resultBackBtn:hover {
+      background: #0056b3;
+    }
+    /* Animated Loading Screen with Spinning Earth Emoji */
+    #loadingScreen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .earthLoader {
+      font-size: 60px;
+      animation: spinEarth 2s linear infinite;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+    @keyframes spinEarth {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .loadingText {
+      color: #fff;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1 id="headerText">𝓣𝓮𝔁𝓽 𝓔𝔁𝓽𝓻𝓪𝓬𝓽𝓸𝓻</h1>
+    <!-- Engaging Drag & Drop area with Icon -->
+    <div id="dropArea">
+      <span class="uploadIcon">📤</span>
+      <span>Drop your file here or click to select</span>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple="">
+    <!-- Selected files displayed as an ordered list -->
+    <div id="selectedFiles"></div>
+    <br>
+    <button id="extractBtn">Extract Text</button>
+    <!-- Share button -->
+    <button id="shareBtn">Share</button>
+  </div>
+  
+  <!-- Single file result container (only used in single file mode) -->
+  <div id="result">
+    The final text will appear here...
+  </div>
+  
+  <!-- Batch Results container (used when more than one file is selected) -->
+  <div id="batchResults"></div>
+  
+  <!-- Correction Modal for Single File Mode -->
+  <div id="correctionScreen">
+    <div id="correctionContent">
+      <h2>Review &amp; Correct Extracted Text</h2>
+      <div id="correctionLines"></div>
+      <div style="text-align:right; margin-top:10px;">
+        <button id="cancelBtn">Cancel</button>
+        <button id="saveCorrectionsBtn">Save Corrections</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Full Correction Modal for Batch Items (Interactive Edit Mode) -->
+  <div id="fullCorrectionScreen">
+    <div id="fullCorrectionContent">
+      <h2>Full Result Correction</h2>
+      <div id="fullCorrectionLines"></div>
+      <div style="text-align:right; margin-top:10px;">
+        <button id="backBtn">Back</button>
+        <button id="saveFullCorrectionsBtn">Save</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Full Result Read-Only View Modal for Batch Items -->
+  <div id="fullResultScreen" style="display: none; position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); z-index:2100; align-items:center; justify-content:center; flex-direction: column;">
+    <div id="fullResultContent" style="background:#fff; padding:20px; border-radius:12px; max-height:80%; overflow-y:auto; width:90%; max-width:600px; text-align:left; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+      <h2>Full OCR Result</h2>
+      <div id="fullResultView"></div>
+      <div style="text-align:right; margin-top:10px;">
+        <button id="resultCopyBtn">Copy</button>
+        <button id="resultBackBtn">Back</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Animated Loading Screen with Spinning Earth Emoji -->
+  <div id="loadingScreen">
+    <div class="earthLoader">🌍</div>
+    <div class="loadingText">Processing OCR...</div>
+  </div>
+  
+  <!-- Load Tesseract.js -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script>
+    // Array of 5 header text variants.
+    const headerStyles = [
+      "𝕋𝕖𝕩𝕥 𝔼𝕩𝕥𝕣𝕒𝕔𝕥𝕠𝕣",
+      "𝕿𝖊𝖝𝖙 𝕰𝖝𝖙𝖗𝖆𝖈𝖙𝖔𝖗",
+      "𝓣𝓮𝔁𝓽 𝓔𝔁𝓽𝓻𝓪𝓬𝓽𝓸𝓻",
+      "🆃🅴🆇🆃 🅴🆇🆃🆁🅰🅲🆃🅾🆁",
+      "T⃝e⃝x⃝t⃝ E⃝x⃝t⃝r⃝a⃝c⃝t⃝o⃝r⃝"
+    ];
+    
+    // Randomly choose a header style.
+    function getRandomHeader(exclude) {
+      let available = headerStyles.filter(s => s !== exclude);
+      return available[Math.floor(Math.random() * available.length)];
+    }
+    
+    // Set initial header text.
+    const headerTextElem = document.getElementById('headerText');
+    headerTextElem.textContent = getRandomHeader(null);
+    
+    // Animate header change: fade out, change text, fade in.
+    function animateHeaderChange() {
+      headerTextElem.style.opacity = 0;
+      setTimeout(() => {
+        const newStyle = getRandomHeader(headerTextElem.textContent);
+        headerTextElem.textContent = newStyle;
+        headerTextElem.style.opacity = 1;
+      }, 500);
+    }
+    
+    // Elements
+    const container = document.getElementById('container');
+    const dropArea = document.getElementById('dropArea');
+    const fileInput = document.getElementById('fileInput');
+    const selectedFilesDiv = document.getElementById('selectedFiles');
+    const extractBtn = document.getElementById('extractBtn');
+    const resultDiv = document.getElementById('result');
+    const batchResultsDiv = document.getElementById('batchResults');
+    const correctionScreen = document.getElementById('correctionScreen');
+    const correctionLines = document.getElementById('correctionLines');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const saveCorrectionsBtn = document.getElementById('saveCorrectionsBtn');
+    const loadingScreen = document.getElementById('loadingScreen');
+    const fullCorrectionScreen = document.getElementById('fullCorrectionScreen');
+    const fullCorrectionLines = document.getElementById('fullCorrectionLines');
+    const backBtn = document.getElementById('backBtn');
+    const saveFullCorrectionsBtn = document.getElementById('saveFullCorrectionsBtn');
+    const fullResultScreen = document.getElementById('fullResultScreen');
+    const fullResultView = document.getElementById('fullResultView');
+    const resultCopyBtn = document.getElementById('resultCopyBtn');
+    const resultBackBtn = document.getElementById('resultBackBtn');
+    
+    // Create Share button functionality.
+    const shareBtn = document.getElementById('shareBtn');
+    shareBtn.addEventListener('click', async () => {
+      // Get current HTML content.
+      const htmlContent = document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const file = new File([blob], "Text Extractor.html", { type: 'text/html' });
+      // Use Web Share API if supported.
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: "Text Extractor",
+            text: "Check out this Text Extractor web app!"
+          });
+        } catch (err) {
+          console.error("Share failed:", err);
+        }
+      } else {
+        // Fallback: download the file.
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "Text Extractor.html";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+    });
+    
+    // Global variables for single file mode.
+    let correctedLines = [];
+    let ocrResultText = "";
+    
+    // Update selected files display as a numbered (ordered) list.
+    function updateSelectedFilesDisplay() {
+      let files = fileInput.files;
+      if (files.length === 0) {
+        selectedFilesDiv.textContent = "";
+        return;
+      }
+      let ol = document.createElement('ol');
+      for (let file of files) {
+        let li = document.createElement('li');
+        li.textContent = file.name;
+        ol.appendChild(li);
+      }
+      selectedFilesDiv.innerHTML = "";
+      selectedFilesDiv.appendChild(ol);
+    }
+    
+    fileInput.addEventListener('change', updateSelectedFilesDisplay);
+    
+    // Drag & Drop Handlers.
+    dropArea.addEventListener('click', () => {
+      fileInput.click();
+    });
+    dropArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropArea.classList.add('hover');
+    });
+    dropArea.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      dropArea.classList.remove('hover');
+    });
+    dropArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropArea.classList.remove('hover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        fileInput.files = e.dataTransfer.files;
+        e.dataTransfer.clearData();
+        updateSelectedFilesDisplay();
+      }
+    });
+    
+    // Utility: Convert a file to a Data URL.
+    function readImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    // Helper: Highlight abnormal parts.
+    function highlightAbnormalParts(text) {
+      const regex = /(\d+%?)/g;
+      let highlighted = "";
+      let lastIndex = 0;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        highlighted += text.substring(lastIndex, match.index);
+        highlighted += `<span class="abnormal">${match[0]}</span>`;
+        lastIndex = regex.lastIndex;
+      }
+      highlighted += text.substring(lastIndex);
+      return highlighted;
+    }
+    
+    // --- Single File Mode Correction ---
+    function createCorrectionLine(lineText, lineIndex) {
+      const lineDiv = document.createElement('div');
+      lineDiv.className = 'lineItem';
+      lineDiv.dataset.lineIndex = lineIndex;
+      correctedLines[lineIndex] = lineText;
+      const lineNumSpan = document.createElement('span');
+      lineNumSpan.className = 'lineNumber';
+      lineNumSpan.textContent = "Line " + (lineIndex + 1) + ": ";
+      lineDiv.appendChild(lineNumSpan);
+      const displaySpan = document.createElement('span');
+      displaySpan.className = 'lineDisplay';
+      displaySpan.innerHTML = highlightAbnormalParts(lineText);
+      lineDiv.appendChild(displaySpan);
+      lineDiv.onclick = function() {
+        if (lineDiv.querySelector('input')) return;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'lineInput';
+        input.value = correctedLines[lineIndex];
+        input.onblur = function() {
+          correctedLines[lineIndex] = input.value;
+          displaySpan.innerHTML = highlightAbnormalParts(input.value);
+          lineDiv.replaceChild(displaySpan, input);
+        };
+        lineDiv.replaceChild(input, displaySpan);
+        input.focus();
+      };
+      return lineDiv;
+    }
+    function showCorrectionScreen(text) {
+      correctionLines.innerHTML = "";
+      const lines = text.split('\n');
+      correctedLines = [...lines];
+      lines.forEach((line, idx) => {
+        const correctionLineDiv = createCorrectionLine(line, idx);
+        correctionLines.appendChild(correctionLineDiv);
+      });
+      correctionScreen.style.display = 'flex';
+    }
+    function assembleCorrectedText() {
+      return correctedLines.join('\n');
+    }
+    
+    // --- Batch Mode ---
+    function createBatchItem(file, index) {
+      const batchItem = document.createElement('div');
+      batchItem.className = 'batchItem';
+      // Header with file number and name.
+      const header = document.createElement('div');
+      header.className = 'batchHeader';
+      header.textContent = (index + 1) + ". " + file.name;
+      batchItem.appendChild(header);
+      // Progress container as flex row.
+      const progressContainer = document.createElement('div');
+      progressContainer.className = 'progressContainer';
+      const progressEl = document.createElement('progress');
+      progressEl.value = 0;
+      progressEl.max = 100;
+      progressEl.style.flex = "1";
+      progressEl.style.marginRight = "10px";
+      progressContainer.appendChild(progressEl);
+      // Small rotating Earth indicator on the right.
+      const earthIndicator = document.createElement('div');
+      earthIndicator.className = 'batchEarthIndicator';
+      earthIndicator.textContent = "🌍";
+      progressContainer.appendChild(earthIndicator);
+      batchItem.appendChild(progressContainer);
+      // Preview box.
+      const preview = document.createElement('div');
+      preview.className = 'batchPreview';
+      preview.textContent = "Processing...";
+      batchItem.appendChild(preview);
+      // Copy button.
+      const copyButton = document.createElement('button');
+      copyButton.className = 'batchCopyBtn';
+      copyButton.textContent = 'Copy';
+      copyButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(batchItem.dataset.fullText)
+          .then(() => {
+            copyButton.textContent = 'Copied!';
+            setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
+          });
+      });
+      let fullText = "";
+      readImageFile(file)
+        .then(dataUrl => {
+          return Tesseract.recognize(
+            dataUrl,
+            'eng+ben',
+            { logger: m => {
+                if (m.status === 'recognizing text') {
+                  progressEl.value = Math.floor(m.progress * 100);
+                }
+              }
+            }
+          );
+        })
+        .then(({ data: { text } }) => {
+          fullText = text;
+          progressContainer.style.display = 'none';
+          batchItem.dataset.fullText = fullText;
+          const lines = text.split('\n').filter(line => line.trim() !== '');
+          preview.innerHTML = lines.slice(0, 3).join('<br>') || "No text detected.";
+          batchItem.appendChild(copyButton);
+          animateHeaderChange();
+        })
+        .catch(err => {
+          progressContainer.style.display = 'none';
+          preview.textContent = "Error processing file.";
+          console.error("Error OCR file " + file.name, err);
+        });
+      batchItem.addEventListener('click', () => {
+        container.style.display = 'none';
+        openFullCorrection(batchItem);
+      });
+      return batchItem;
+    }
+    function processBatchFiles(files) {
+      batchResultsDiv.innerHTML = "<h2>Batch Processing Results</h2>";
+      Array.from(files).forEach((file, idx) => {
+        const batchItem = createBatchItem(file, idx);
+        batchResultsDiv.appendChild(batchItem);
+      });
+    }
+    
+    // --- Full Correction Modal for Batch Items ---
+    function openFullCorrection(batchItem) {
+      fullCorrectionLines.innerHTML = "";
+      const fullText = batchItem.dataset.fullText;
+      const lines = fullText.split('\n');
+      let fullCorrectedLines = [...lines];
+      lines.forEach((line, idx) => {
+        const lineDiv = document.createElement('div');
+        lineDiv.className = 'lineItem';
+        lineDiv.dataset.lineIndex = idx;
+        const lineNumSpan = document.createElement('span');
+        lineNumSpan.className = 'lineNumber';
+        lineNumSpan.textContent = "Line " + (idx + 1) + ": ";
+        lineDiv.appendChild(lineNumSpan);
+        const displaySpan = document.createElement('span');
+        displaySpan.className = 'lineDisplay';
+        displaySpan.innerHTML = highlightAbnormalParts(line);
+        lineDiv.appendChild(displaySpan);
+        lineDiv.onclick = function() {
+          if (lineDiv.querySelector('input')) return;
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'lineInput';
+          input.value = fullCorrectedLines[idx];
+          input.onblur = function() {
+            fullCorrectedLines[idx] = input.value;
+            displaySpan.innerHTML = highlightAbnormalParts(input.value);
+            lineDiv.replaceChild(displaySpan, input);
+          };
+          lineDiv.replaceChild(input, displaySpan);
+          input.focus();
+        };
+        fullCorrectionLines.appendChild(lineDiv);
+      });
+      fullCorrectionScreen.style.display = 'flex';
+      saveFullCorrectionsBtn.onclick = function() {
+        const correctedFullText = fullCorrectedLines.join('\n');
+        batchItem.dataset.fullText = correctedFullText;
+        const updatedLines = correctedFullText.split('\n').filter(line => line.trim() !== '');
+        const previewText = updatedLines.slice(0, 3).join('<br>') || "No text detected.";
+        const previewBox = batchItem.querySelector('.batchPreview');
+        if (previewBox) previewBox.innerHTML = previewText;
+        showFullResult(correctedFullText);
+      };
+      backBtn.onclick = function() {
+        fullCorrectionScreen.style.display = 'none';
+        container.style.display = 'block';
+      };
+    }
+    function showFullResult(text) {
+      fullResultView.innerText = text;
+      fullCorrectionScreen.style.display = 'none';
+      fullResultScreen.style.display = 'flex';
+    }
+    resultCopyBtn.addEventListener('click', () => {
+      const textToCopy = fullResultView.innerText.trim();
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          resultCopyBtn.textContent = 'Copied!';
+          setTimeout(() => { resultCopyBtn.textContent = 'Copy'; }, 2000);
+        })
+        .catch(err => {
+          console.error('Failed to copy text: ', err);
+        });
+    });
+    resultBackBtn.addEventListener('click', () => {
+      fullResultScreen.style.display = 'none';
+      container.style.display = 'block';
+    });
+    
+    // --- Loading Screen ---
+    function showLoading(show) {
+      loadingScreen.style.display = show ? 'flex' : 'none';
+    }
+    
+    // --- Main Extraction Handler ---
+    extractBtn.addEventListener('click', async () => {
+      const files = fileInput.files;
+      if (files.length === 0) {
+        alert('Please select or drop an image file.');
+        return;
+      }
+      if (files.length === 1) {
+        resultDiv.style.display = 'block';
+        batchResultsDiv.style.display = 'none';
+        resultDiv.textContent = 'Processing OCR...';
+        showLoading(true);
+        try {
+          const dataUrl = await readImageFile(files[0]);
+          Tesseract.recognize(
+            dataUrl,
+            'eng+ben',
+            { logger: m => console.log(m) }
+          )
+          .then(({ data: { text } }) => {
+            ocrResultText = text;
+            showLoading(false);
+            showCorrectionScreen(ocrResultText);
+            animateHeaderChange();
+          })
+          .catch(error => {
+            console.error(error);
+            showLoading(false);
+            resultDiv.textContent = 'Error during OCR processing.';
+          });
+        } catch (error) {
+          console.error(error);
+          showLoading(false);
+          resultDiv.textContent = 'Error reading image file.';
+        }
+      } else {
+        resultDiv.style.display = 'none';
+        correctionScreen.style.display = 'none';
+        batchResultsDiv.style.display = 'block';
+        batchResultsDiv.innerHTML = "<h2>Batch Processing Results</h2>";
+        processBatchFiles(files);
+      }
+    });
+    
+    // --- Single File Mode: Copy Button ---
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copyBtn';
+    copyBtn.textContent = 'Copy';
+    copyBtn.title = 'Copy to Clipboard';
+    copyBtn.addEventListener('click', () => {
+      const textToCopy = resultDiv.innerText.trim();
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => {
+          copyBtn.textContent = 'Copied!';
+          setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+        })
+        .catch(err => {
+          console.error('Failed to copy text: ', err);
+        });
+    });
+    
+    // --- Single File Mode: Correction Save/Cancel Handlers ---
+    saveCorrectionsBtn.addEventListener('click', () => {
+      const finalText = assembleCorrectedText();
+      correctionScreen.style.display = 'none';
+      resultDiv.innerHTML = finalText;
+      resultDiv.appendChild(copyBtn);
+      animateHeaderChange();
+    });
+    cancelBtn.addEventListener('click', () => {
+      correctionScreen.style.display = 'none';
+      resultDiv.innerHTML = ocrResultText;
+      resultDiv.appendChild(copyBtn);
+      animateHeaderChange();
+    });
+  </script>
+
+
+
+<style>
+</style>
+<script>
+// your code goes here
+</script></body></html>
